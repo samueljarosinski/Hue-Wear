@@ -1,0 +1,92 @@
+apply plugin: 'com.android.application'
+
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-android-extensions'
+
+apply from: rootProject.file('gradle/checks/checkstyle.gradle')
+
+android {
+    compileSdkVersion 27
+    buildToolsVersion '27.0.3'
+
+    defaultConfig {
+        applicationId "io.github.samueljarosinski.huewear"
+
+        versionCode 1
+        versionName '0.1'
+
+        minSdkVersion 25
+        targetSdkVersion 27
+    }
+
+    signingConfigs {
+        release {
+            Properties signingProperties = new Properties()
+            signingProperties.load(new FileInputStream(rootProject.file('signing.properties')))
+
+            storeFile rootProject.file(signingProperties['storeFile'])
+            storePassword signingProperties['storePassword']
+            keyAlias signingProperties['keyAlias']
+            keyPassword signingProperties['keyPassword']
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+
+            signingConfig signingConfigs.release
+
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+
+        debug {
+            applicationIdSuffix '.debug'
+            versionNameSuffix '-debug'
+        }
+    }
+
+    compileOptions {
+        incremental true
+
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    dexOptions {
+        dexInProcess true
+        maxProcessCount 4
+        javaMaxHeapSize '4g'
+    }
+
+    packagingOptions {
+        exclude 'META-INF/LICENSE.txt'
+        exclude 'META-INF/NOTICE.txt'
+    }
+
+    lintOptions {
+        abortOnError true
+        ignoreWarnings false
+        warningsAsErrors true
+    }
+}
+
+final supportVersion = '27.1.0'
+final wearableVersion = '2.2.0'
+
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jre7:$kotlinVersion"
+    implementation 'androidx.core:core-ktx:0.2'
+
+    implementation "com.google.android.support:wearable:$wearableVersion"
+
+    implementation "com.android.support:support-v4:$supportVersion"
+    implementation "com.android.support:wear:$supportVersion"
+
+    compileOnly "com.google.android.wearable:wearable:$wearableVersion"
+}
+
+configurations.all {
+    resolutionStrategy.force "com.android.support:percent:$supportVersion"
+}
