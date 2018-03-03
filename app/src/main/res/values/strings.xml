@@ -3,6 +3,6 @@
 <resources>
 
     <string name="app_name">Hue Wear</string>
-    <string name="hello_world">Hello World!</string>
+    <string name="connection_error">Connection error</string>
 
 </resources>
