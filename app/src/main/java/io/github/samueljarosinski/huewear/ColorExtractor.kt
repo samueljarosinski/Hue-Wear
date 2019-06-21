@@ -3,8 +3,8 @@ package io.github.samueljarosinski.huewear
 import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.drawable.BitmapDrawable
-import android.support.annotation.ColorInt
 import android.widget.ImageView
+import androidx.annotation.ColorInt
 
 typealias OnColorExtractedListener = (Int) -> Unit
 
@@ -41,12 +41,14 @@ class ColorExtractor(
         val mappedPoints = floatArrayOf(position.first, position.second)
         invertMatrix.mapPoints(mappedPoints)
 
-        if (mappedPoints[0] > 0 && mappedPoints[1] > 0 &&
-            mappedPoints[0] < paletteDrawable.intrinsicWidth && mappedPoints[1] < paletteDrawable.intrinsicHeight) {
-
-            return paletteDrawable.bitmap.getPixel(mappedPoints[0].toInt(), mappedPoints[1].toInt())
+        return if (pointMappedInPalette(mappedPoints)) {
+            paletteDrawable.bitmap.getPixel(mappedPoints[0].toInt(), mappedPoints[1].toInt())
+        } else {
+            Color.WHITE
         }
-
-        return Color.WHITE
     }
+
+    private fun pointMappedInPalette(mappedPoints: FloatArray) =
+        mappedPoints[0] > 0 && mappedPoints[1] > 0 &&
+        mappedPoints[0] < paletteDrawable.intrinsicWidth && mappedPoints[1] < paletteDrawable.intrinsicHeight
 }

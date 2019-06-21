@@ -1,11 +1,12 @@
 package io.github.samueljarosinski.huewear
 
 import android.app.Application
-import android.os.Build
 import com.philips.lighting.hue.sdk.wrapper.HueLog
 import com.philips.lighting.hue.sdk.wrapper.Persistence
+import io.github.samueljarosinski.huewear.hue.DEVICE_NAME
 import timber.log.Timber
 
+@Suppress("unused")
 class HueWearApplication : Application() {
 
     override fun onCreate() {
@@ -15,8 +16,9 @@ class HueWearApplication : Application() {
             Timber.plant(Timber.DebugTree())
         }
 
-        Persistence.setStorageLocation(filesDir.absolutePath, Build.MODEL)
+        Persistence.setStorageLocation(filesDir.absolutePath, DEVICE_NAME)
         HueLog.setConsoleLogLevel(HueLog.LogLevel.INFO, HueLog.LogComponent.ALL)
+        // HueLog.setFileLogLevel(HueLog.LogLevel.INFO, HueLog.LogComponent.ALL)
     }
 
     companion object {

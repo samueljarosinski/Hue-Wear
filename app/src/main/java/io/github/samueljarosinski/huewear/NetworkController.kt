@@ -1,22 +1,18 @@
 package io.github.samueljarosinski.huewear
 
-import android.content.Context
 import android.net.ConnectivityManager
 import android.net.ConnectivityManager.NetworkCallback
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
-import androidx.content.systemService
 import timber.log.Timber
 
-typealias OnNetworkAvailableListener = () -> Unit
+typealias OnNetworkAvailableListener = (Boolean) -> Unit
 
 class NetworkController(
-    private val context: Context,
+    private val connectivityManager: ConnectivityManager,
     private val onNetworkAvailable: OnNetworkAvailableListener
 ) : NetworkCallback() {
-
-    private val connectivityManager: ConnectivityManager get() = context.systemService()
 
     fun connect() {
         Timber.d("Connecting to WiFi.")
@@ -33,7 +29,7 @@ class NetworkController(
     fun disconnect() {
         Timber.d("Disconnecting from WiFi.")
 
-        connectivityManager.apply {
+        with(connectivityManager) {
             bindProcessToNetwork(null)
             unregisterNetworkCallback(this@NetworkController)
         }
@@ -43,9 +39,11 @@ class NetworkController(
         if (connectivityManager.bindProcessToNetwork(network)) {
             Timber.d("Connected to WiFi.")
 
-            onNetworkAvailable()
+            onNetworkAvailable(true)
         } else {
             Timber.e("WiFi not available.")
+
+            onNetworkAvailable(false)
         }
     }
 }

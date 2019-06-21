@@ -6,7 +6,6 @@ import android.view.View
 import android.view.ViewPropertyAnimator
 
 private const val SCALE_RATIO: Float = 2.0f
-private const val SCALE_ANIMATION_DURATION: Long = 200
 
 typealias Position = Pair<Float, Float>
 typealias OnMoveListener = (Position) -> Unit
@@ -19,6 +18,8 @@ class HandleController(
 ) : View.OnTouchListener {
 
     private var screenHeight: Int = 0
+    private val animationDuration: Long =
+        handleView.resources.getInteger(android.R.integer.config_shortAnimTime).toLong()
 
     init {
         with(handleView.parent as View) {
@@ -37,7 +38,7 @@ class HandleController(
                 .setPosition(event.getViewPosition(handleView))
                 .scaleX(SCALE_RATIO)
                 .scaleY(SCALE_RATIO)
-                .setDuration(SCALE_ANIMATION_DURATION)
+                .setDuration(animationDuration)
                 .start()
 
             true
@@ -60,7 +61,7 @@ class HandleController(
                 .setPosition(event.getViewPosition(handleView))
                 .scaleX(1f)
                 .scaleY(1f)
-                .setDuration(SCALE_ANIMATION_DURATION)
+                .setDuration(animationDuration)
                 .start()
 
             true

@@ -1,6 +1,5 @@
 package io.github.samueljarosinski.huewear.hue
 
-import android.text.TextUtils
 import com.philips.lighting.hue.sdk.wrapper.connection.BridgeConnection
 import com.philips.lighting.hue.sdk.wrapper.connection.BridgeConnectionType
 import com.philips.lighting.hue.sdk.wrapper.connection.BridgeStateCacheType
@@ -17,34 +16,25 @@ import com.philips.lighting.hue.sdk.wrapper.knownbridges.KnownBridges
 import com.philips.lighting.hue.sdk.wrapper.uicallback.BridgeConnectionNonUICallback
 import com.philips.lighting.hue.sdk.wrapper.uicallback.BridgeDiscoveryNonUICallback
 import com.philips.lighting.hue.sdk.wrapper.uicallback.BridgeStateUpdatedNonUICallback
+import io.github.samueljarosinski.huewear.hue.BridgeDiscoveryCallback.OnBridgeDiscoveryListener
 import timber.log.Timber
-import java.util.*
 
-class BridgeController {
+internal class BridgeController {
 
     private var bridge: Bridge? = null
     private var bridgeDiscovery: BridgeDiscovery? = null
     private var bridgeConnectedListener: OnBridgeConnectedListener? = null
 
-    private val lastConnectedBridge: KnownBridge?
-        get() {
-            val knownBridges = KnownBridges.getAll()
-            Timber.v("Found ${knownBridges.size} known bridge(s).")
-
-            return if (knownBridges.isEmpty()) {
-                null
-            } else Collections.max(knownBridges) { a, b ->
-                a.lastConnected.compareTo(b.lastConnected)
-            }
-        }
-
     fun connect(onBridgeConnectedListener: OnBridgeConnectedListener) {
         bridgeConnectedListener = onBridgeConnectedListener
 
-        val knownBridge = lastConnectedBridge
+        val knownBridge = getLastConnectedBridge()
 
-        if (knownBridge == null || TextUtils.isEmpty(knownBridge.ipAddress)) startBridgeDiscovery()
-        else connectToBridge(knownBridge.ipAddress, knownBridge.uniqueId)
+        if (knownBridge == null || knownBridge.ipAddress.isNullOrEmpty()) {
+            startBridgeDiscovery()
+        } else {
+            connectToBridge(knownBridge.ipAddress, knownBridge.uniqueId)
+        }
     }
 
     fun disconnect() {
@@ -54,18 +44,42 @@ class BridgeController {
         bridgeConnectedListener = null
     }
 
+    private fun getLastConnectedBridge(): KnownBridge? {
+        val knownBridges = KnownBridges.getAll()
+        Timber.v("Found ${knownBridges.size} known bridge(s).")
+
+        return if (knownBridges.isEmpty()) null else knownBridges.maxBy { it.lastConnected }
+    }
+
     private fun startBridgeDiscovery() {
         disconnectFromBridge()
 
         Timber.d("Starting bridge discovery.")
 
-        bridgeDiscovery = BridgeDiscovery()
-        bridgeDiscovery!!.search(BridgeDiscovery.BridgeDiscoveryOption.ALL, BridgeDiscoveryCallback(::connectToBridge))
+        bridgeDiscovery = BridgeDiscovery().apply {
+            search(
+                BridgeDiscovery.BridgeDiscoveryOption.ALL,
+                BridgeDiscoveryCallback(createOnBridgeDiscoveryListener())
+            )
+        }
     }
+
+    private fun createOnBridgeDiscoveryListener(): OnBridgeDiscoveryListener =
+        object : OnBridgeDiscoveryListener {
+
+            override fun onNoBridgesFound() {
+                stopBridgeDiscovery()
+                bridgeConnectedListener?.onNoBridgesFound()
+            }
+
+            override fun onBridgeDiscovered(ipAddress: String, bridgeId: String) =
+                connectToBridge(ipAddress, bridgeId)
+        }
 
     private fun stopBridgeDiscovery() {
         bridgeDiscovery?.apply {
             Timber.d("Stopping bridge discovery.")
+
             stop()
             bridgeDiscovery = null
         }
@@ -75,9 +89,7 @@ class BridgeController {
         stopBridgeDiscovery()
         disconnectFromBridge()
 
-        if (bridgeConnectedListener == null) {
-            return
-        }
+        if (bridgeConnectedListener == null) return
 
         bridge = BridgeBuilder(APP_NAME, DEVICE_NAME)
             .setConnectionType(BridgeConnectionType.LOCAL)
@@ -87,42 +99,48 @@ class BridgeController {
             .setBridgeConnectionCallback(BridgeConnectionCallback(bridgeConnectedListener!!))
             .build()
 
-        if (bridge != null) {
+        bridge?.let {
             Timber.d("Connecting to bridge with IP $ipAddress.")
 
-            bridge!!.connect()
+            it.connect()
         }
     }
 
     private fun disconnectFromBridge() {
-        bridge?.apply {
+        bridge?.let {
             Timber.d("Disconnecting from bridge.")
-            disconnect()
+
+            it.disconnect()
             bridge = null
         }
     }
 }
 
 private class BridgeDiscoveryCallback(
-    private val onBridgeDiscoveredListener: (String, String) -> Unit
+    private val onBridgeDiscoveryListener: OnBridgeDiscoveryListener
 ) : BridgeDiscoveryNonUICallback() {
 
     override fun onFinished(results: List<BridgeDiscoveryResult>, returnCode: ReturnCode) {
         when (returnCode) {
             ReturnCode.SUCCESS -> {
-                Timber.d("Found ${results.size} bridge(s) in the network.")
-
                 if (results.isNotEmpty()) {
-                    onBridgeDiscoveredListener(results[0].ip, results[0].uniqueID)
+                    Timber.d("Found ${results.size} bridge(s) in the network.")
+                    onBridgeDiscoveryListener.onBridgeDiscovered(results[0].ip, results[0].uniqueID)
                 } else {
-                    Timber.w("No bridges found!")
+                    Timber.d("No bridges found!")
+                    onBridgeDiscoveryListener.onNoBridgesFound()
                 }
             }
 
             ReturnCode.STOPPED -> Timber.d("Bridge discovery stopped.")
 
-            else -> Timber.e("Error doing bridge discovery: $returnCode")
+            else               -> Timber.e("Error doing bridge discovery: $returnCode.")
         }
+    }
+
+    interface OnBridgeDiscoveryListener {
+        fun onNoBridgesFound()
+        fun onBridgeDiscovered(ipAddress: String, bridgeId: String)
     }
 }
 
@@ -131,18 +149,29 @@ private class BridgeConnectionCallback(
 ) : BridgeConnectionNonUICallback() {
 
     override fun onConnectionEvent(bridgeConnection: BridgeConnection, connectionEvent: ConnectionEvent) {
-        Timber.v("Bridge connection event: $connectionEvent")
+        Timber.v("Bridge connection event: $connectionEvent.")
 
-        if (connectionEvent == ConnectionEvent.AUTHENTICATED) {
-            Timber.d("Starting heartbeat.")
+        @Suppress("NON_EXHAUSTIVE_WHEN")
+        when (connectionEvent) {
+            ConnectionEvent.NOT_AUTHENTICATED,
+            ConnectionEvent.LINK_BUTTON_NOT_PRESSED -> {
+                Timber.d("Not authenticated.")
 
-            val heartbeatManager = bridgeConnection.heartbeatManager
-            heartbeatManager.startHeartbeat(BridgeStateCacheType.LIGHTS_AND_GROUPS, HEARTBEAT_INTERVAL)
+                onBridgeConnectedListener.onNotAuthenticated()
+            }
+
+            ConnectionEvent.AUTHENTICATED           -> {
+                Timber.d("Starting heartbeat.")
+
+                bridgeConnection.heartbeatManager.startHeartbeat(
+                    BridgeStateCacheType.LIGHTS_AND_GROUPS, HEARTBEAT_INTERVAL
+                )
+            }
         }
     }
 
     override fun onConnectionError(bridgeConnection: BridgeConnection, errors: List<HueError>) {
-        errors.forEach { error -> Timber.e("Connection error: $error") }
+        errors.forEach { error -> Timber.e("Connection error: $error.") }
 
         onBridgeConnectedListener.onConnectionError()
     }
@@ -161,7 +190,9 @@ private class BridgeStateUpdatedCallback(
     }
 }
 
-interface OnBridgeConnectedListener {
-    fun onBridgeConnected(bridge: Bridge)
+internal interface OnBridgeConnectedListener {
+    fun onNoBridgesFound()
+    fun onNotAuthenticated()
     fun onConnectionError()
+    fun onBridgeConnected(bridge: Bridge)
 }

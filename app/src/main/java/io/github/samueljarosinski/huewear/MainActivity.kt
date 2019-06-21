@@ -1,10 +1,12 @@
 package io.github.samueljarosinski.huewear
 
 import android.graphics.drawable.GradientDrawable
+import android.net.ConnectivityManager
 import android.os.Bundle
 import android.support.wearable.activity.WearableActivity
 import android.view.View
 import android.widget.Toast
+import androidx.core.content.getSystemService
 import io.github.samueljarosinski.huewear.hue.HueController
 import io.github.samueljarosinski.huewear.hue.MIN_UPDATE_DELAY
 import io.github.samueljarosinski.huewear.hue.OnHueConnectionListener
@@ -26,7 +28,10 @@ class MainActivity : WearableActivity() {
         handleView = findViewById(R.id.handle)
         progressView = findViewById(R.id.progress)
 
-        networkController = NetworkController(this, onNetworkAvailable = ::startHue)
+        val connectivityManager: ConnectivityManager =
+            getSystemService() ?: throw IllegalStateException("Cannot get ConnectivityManager service.")
+
+        networkController = NetworkController(connectivityManager, ::onNetworkAvailable)
     }
 
     override fun onStart() {
@@ -47,16 +52,20 @@ class MainActivity : WearableActivity() {
         super.onStop()
     }
 
+    private fun onNetworkAvailable(available: Boolean) {
+        if (available) {
+            startHue()
+        } else {
+            showMessage(R.string.no_network_available)
+        }
+    }
+
     private fun startHue() {
         hueController.start(object : OnHueConnectionListener {
-
-            override fun onConnected() {
-                startSession()
-            }
-
-            override fun onConnectionError() {
-                Toast.makeText(this@MainActivity, R.string.connection_error, Toast.LENGTH_SHORT).show()
-            }
+            override fun onNoBridgesFound() = showMessage(R.string.no_bridges_found)
+            override fun onNotAuthenticated() = showMessage(R.string.not_authenticated)
+            override fun onConnectionError() = showMessage(R.string.connection_error)
+            override fun onConnected() = startSession()
         })
     }
 
@@ -68,11 +77,21 @@ class MainActivity : WearableActivity() {
             handleView.visibility = View.VISIBLE
         }
 
-        val colorExtractor = ColorExtractor(findViewById(R.id.palette), MIN_UPDATE_DELAY, onColorExtracted = { color ->
-            hueController.setColor(color)
-            (handleView.background as GradientDrawable).setColor(color)
-        })
+        val colorExtractor =
+            ColorExtractor(findViewById(R.id.palette), MIN_UPDATE_DELAY, onColorExtracted = { color ->
+                hueController.setColor(color)
+                (handleView.background as GradientDrawable).setColor(color)
+            })
 
-        HandleController(handleView, onMove = colorExtractor::extract, onScroll = hueController::setBrightness)
+        HandleController(
+            handleView,
+            onMove = colorExtractor::extract,
+            onScroll = hueController::setBrightness
+        )
+    }
+
+    private fun showMessage(messageResId: Int) = runOnUiThread {
+        progressView.visibility = View.GONE
+        Toast.makeText(this@MainActivity, messageResId, Toast.LENGTH_LONG).show()
     }
 }

@@ -1,13 +1,13 @@
 package io.github.samueljarosinski.huewear.hue
 
 import android.os.Build
-import android.support.annotation.ColorInt
+import androidx.annotation.ColorInt
 import com.philips.lighting.hue.sdk.wrapper.domain.Bridge
 import timber.log.Timber
 
-const val APP_NAME = "Hue Wear"
 val DEVICE_NAME: String = Build.MODEL
-const val HEARTBEAT_INTERVAL = 10000
+internal const val APP_NAME = "Hue Wear"
+internal const val HEARTBEAT_INTERVAL = 10000
 const val MIN_UPDATE_DELAY = 100
 
 class HueController {
@@ -21,6 +21,14 @@ class HueController {
 
         hueConnectionListener = onHueConnectionListener
         bridgeController.connect(object : OnBridgeConnectedListener {
+
+            override fun onNoBridgesFound() {
+                hueConnectionListener?.onNoBridgesFound()
+            }
+
+            override fun onNotAuthenticated() {
+                hueConnectionListener?.onNotAuthenticated()
+            }
 
             override fun onBridgeConnected(bridge: Bridge) {
                 lightsController = LightsController(bridge)
@@ -48,10 +56,11 @@ class HueController {
     fun setBrightness(brightness: Int) {
         lightsController?.setBrightness(brightness)
     }
-
 }
 
 interface OnHueConnectionListener {
+    fun onNoBridgesFound()
+    fun onNotAuthenticated()
     fun onConnected()
     fun onConnectionError()
 }

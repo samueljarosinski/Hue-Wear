@@ -1,7 +1,7 @@
 package io.github.samueljarosinski.huewear.hue
 
 import android.graphics.Color
-import android.support.annotation.ColorInt
+import androidx.annotation.ColorInt
 import com.philips.lighting.hue.sdk.wrapper.connection.BridgeConnectionType
 import com.philips.lighting.hue.sdk.wrapper.connection.BridgeResponseCallback
 import com.philips.lighting.hue.sdk.wrapper.domain.Bridge
@@ -15,28 +15,41 @@ import timber.log.Timber
 
 private const val TRANSITION_TIME = 1
 
-class LightsController(private val bridge: Bridge) {
+class LightsController(
+    private val bridge: Bridge
+) {
 
     private val lightState: LightState = LightState().setTransitionTime(TRANSITION_TIME)
 
     fun setColor(@ColorInt color: Int) {
-        Timber.d("Setting color.")
+        Timber.v("Setting color.")
 
         val rgb = HueColor.RGB(Color.red(color), Color.green(color), Color.blue(color))
 
-        bridge.bridgeState.lights.filter { it.lightState.isOn }.forEach {
-            lightState.setXYWithColor(HueColor(rgb, it.configuration.modelIdentifier, it.configuration.swVersion))
-            it.updateState(lightState, BridgeConnectionType.LOCAL, LightStateUpdateResponseCallback(it, lightState))
-        }
+        bridge.bridgeState.lights
+            .filter { it.lightState.isOn }
+            .forEach {
+                lightState.setXYWithColor(
+                    HueColor(rgb, it.configuration.modelIdentifier, it.configuration.swVersion)
+                )
+
+                it.updateState(
+                    lightState, BridgeConnectionType.LOCAL, LightStateUpdateResponseCallback(it, lightState)
+                )
+            }
     }
 
     fun setBrightness(brightness: Int) {
         Timber.d("Setting brightness $brightness.")
 
-        bridge.bridgeState.lights.filter { it.lightState.isOn }.forEach {
-            lightState.brightness = brightness
-            it.updateState(lightState, BridgeConnectionType.LOCAL, LightStateUpdateResponseCallback(it, lightState))
-        }
+        bridge.bridgeState.lights
+            .filter { it.lightState.isOn }
+            .forEach {
+                lightState.brightness = brightness
+                it.updateState(
+                    lightState, BridgeConnectionType.LOCAL, LightStateUpdateResponseCallback(it, lightState)
+                )
+            }
     }
 }
 
@@ -46,7 +59,9 @@ internal class LightStateUpdateResponseCallback(
 ) : BridgeResponseCallback() {
 
     override fun handleCallback(
-        bridge: Bridge, returnCode: ReturnCode, clipResponses: List<ClipResponse>,
+        bridge: Bridge,
+        returnCode: ReturnCode,
+        clipResponses: List<ClipResponse>,
         errorList: List<HueError>
     ) {
         when {
@@ -56,12 +71,11 @@ internal class LightStateUpdateResponseCallback(
                 light.updateState(lightState, BridgeConnectionType.LOCAL, this)
             }
 
-            returnCode != ReturnCode.SUCCESS -> {
+            returnCode != ReturnCode.SUCCESS  -> {
                 Timber.e("Error changing light %s: %s.", light.identifier, returnCode)
 
                 errorList.forEach { error -> Timber.e(error.toString()) }
             }
         }
     }
-
 }

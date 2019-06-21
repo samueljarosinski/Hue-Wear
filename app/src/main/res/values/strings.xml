@@ -3,6 +3,9 @@
 <resources>
 
     <string name="app_name">Hue Wear</string>
+    <string name="not_authenticated">Push the button!</string>
+    <string name="no_network_available">No Wi-Fi available</string>
+    <string name="no_bridges_found">No bridges found</string>
     <string name="connection_error">Connection error</string>
 
 </resources>
