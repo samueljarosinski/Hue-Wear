@@ -1,19 +1,33 @@
 apply plugin: 'checkstyle'
 
-ext.createCheckstyleTaskForVariant = { variant ->
-    def name = variant.name.capitalize()
-    def checkstyle = project.tasks.create "checkstyle${name}", Checkstyle
+checkstyle {
+    toolVersion = '8.21'
 
-    checkstyle.group = "Verification"
-    checkstyle.source variant.javaCompile.source.minus(fileTree(project.file('build')))
-    checkstyle.classpath = project.fileTree(variant.javaCompile.destinationDir)
-    checkstyle.configFile = rootProject.file('config/checkstyle/checkstyle.xml')
-    checkstyle.showViolations = false
-
-    project.tasks.getByName("check").dependsOn checkstyle
+    maxWarnings = 0
+    maxErrors = 0
 }
 
-android.applicationVariants.all { variant ->
-    createCheckstyleTaskForVariant(variant)
-    createCheckstyleTaskForVariant(variant.unitTestVariant)
+task checkstyle(type: Checkstyle) {
+    group = 'Verification'
+
+    source 'src'
+    include '**/*.java'
+    exclude '**/gen/**'
+    exclude '**/R.java'
+    exclude '**/BR.java'
+    exclude '**/BuildConfig.java'
+
+    classpath = files()
+    configFile = rootProject.file('config/checkstyle/checkstyle.xml')
+
+    reports {
+        xml.enabled = false
+        html.enabled = true
+    }
+
+    showViolations = true
+    ignoreFailures = false
+
+    outputs.upToDateWhen { false }
+    project.tasks.getByName('check').dependsOn it
 }

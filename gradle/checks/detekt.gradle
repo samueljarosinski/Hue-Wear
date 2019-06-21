@@ -1,0 +1,18 @@
+apply plugin: 'io.gitlab.arturbosch.detekt'
+
+detekt {
+    config = files("$rootProject.projectDir/config/detekt/config.yml")
+    buildUponDefaultConfig = true
+    filters = '.*/resources/.*,.*/build/.*'
+
+    reports {
+        xml.enabled = false
+        html.enabled = true
+    }
+}
+
+dependencies {
+    detektPlugins 'io.gitlab.arturbosch.detekt:detekt-formatting:1.0.0-RC15'
+}
+
+project.tasks.getByName('check').dependsOn(project.tasks.getByName('detekt'))

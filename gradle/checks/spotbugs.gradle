@@ -1,0 +1,32 @@
+apply plugin: 'com.github.spotbugs'
+
+sourceSets {
+    main {
+        java.srcDirs = []
+    }
+}
+
+spotbugs {
+    toolVersion = '3.1.12'
+
+    effort = 'max'
+    reportLevel = 'low'
+    ignoreFailures = false
+
+    excludeFilter = file("$rootProject.projectDir/config/spotbugs/excludeFilter.xml")
+}
+
+project.tasks.getByName('spotbugsMain') {
+    group = 'Verification'
+
+    classes = files("${project.buildDir}/intermediates/javac")
+    source = 'src'
+    classpath = files()
+
+    reports {
+        xml.enabled false
+        html.enabled true
+    }
+
+    dependsOn 'assembleDebug'
+}

@@ -2,32 +2,45 @@ apply plugin: 'com.android.application'
 
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
+apply plugin: 'kotlin-kapt'
 
+apply from: rootProject.file('gradle/checks/detekt.gradle')
 apply from: rootProject.file('gradle/checks/checkstyle.gradle')
+apply from: rootProject.file('gradle/checks/spotbugs.gradle')
 
 android {
-    compileSdkVersion 27
-    buildToolsVersion '27.0.3'
+    compileSdkVersion 29
 
     defaultConfig {
-        applicationId "io.github.samueljarosinski.huewear"
+        applicationId 'io.github.samueljarosinski.huewear'
 
+        versionName '0.1.0'
         versionCode 1
-        versionName '0.1'
 
         minSdkVersion 25
-        targetSdkVersion 27
+        targetSdkVersion 29
+
+        vectorDrawables.useSupportLibrary true
+        resConfigs 'en'
     }
 
     signingConfigs {
         release {
-            Properties signingProperties = new Properties()
-            signingProperties.load(new FileInputStream(rootProject.file('signing.properties')))
+            def signingFile = rootProject.file('signing.properties')
 
-            storeFile rootProject.file(signingProperties['storeFile'])
-            storePassword signingProperties['storePassword']
-            keyAlias signingProperties['keyAlias']
-            keyPassword signingProperties['keyPassword']
+            if (signingFile.canRead()) {
+                Properties signingProperties = new Properties()
+                signingProperties.load(new FileInputStream(signingFile))
+
+                storeFile rootProject.file(signingProperties['storeFile'])
+                storePassword signingProperties['storePassword']
+                keyAlias signingProperties['keyAlias']
+                keyPassword signingProperties['keyPassword']
+            }
+        }
+
+        debug {
+            storeFile rootProject.file('debug.keystore')
         }
     }
 
@@ -35,6 +48,7 @@ android {
         release {
             minifyEnabled true
             shrinkResources true
+            crunchPngs true
 
             signingConfig signingConfigs.release
 
@@ -44,6 +58,8 @@ android {
         debug {
             applicationIdSuffix '.debug'
             versionNameSuffix '-debug'
+
+            signingConfig signingConfigs.debug
         }
     }
 
@@ -56,8 +72,13 @@ android {
 
     dexOptions {
         dexInProcess true
+        preDexLibraries true
         maxProcessCount 4
         javaMaxHeapSize '4g'
+    }
+
+    kapt {
+        useBuildCache true
     }
 
     packagingOptions {
@@ -67,31 +88,23 @@ android {
 
     lintOptions {
         abortOnError true
-        ignoreWarnings false
         warningsAsErrors true
+        ignoreWarnings false
+        xmlReport false
+        lintConfig file("${project.rootDir}/config/lint/lint.xml")
+        htmlOutput file("${project.buildDir}/reports/lint/lint.html")
     }
 }
-
-final supportVersion = '27.1.0'
-final wearableVersion = '2.2.0'
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jre7:$kotlinVersion"
-    implementation 'androidx.core:core-ktx:0.2'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlinVersion"
+    implementation "androidx.core:core-ktx:1.0.2"
+    implementation "androidx.wear:wear:1.0.0"
 
-    implementation "com.google.android.support:wearable:$wearableVersion"
+    implementation "com.google.android.support:wearable:2.4.0"
+    compileOnly "com.google.android.wearable:wearable:2.4.0"
 
-    implementation "com.android.support:support-v4:$supportVersion"
-    implementation "com.android.support:appcompat-v7:$supportVersion"
-    implementation "com.android.support:wear:$supportVersion"
-
-    implementation 'com.jakewharton.timber:timber:4.6.0'
-
-    compileOnly "com.google.android.wearable:wearable:$wearableVersion"
-}
-
-configurations.all {
-    resolutionStrategy.force "com.android.support:percent:$supportVersion"
+    implementation "com.jakewharton.timber:timber:4.7.1"
 }

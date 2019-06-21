@@ -1,0 +1,22 @@
+build:
+  maxIssues: 0
+
+complexity:
+  TooManyFunctions:
+    thresholdInClasses: 20
+  ComplexMethod:
+    threshold: 10
+
+formatting:
+  ParameterListWrapping:
+    active: false
+  NoMultipleSpaces:
+    active: false
+  MaximumLineLength:
+    active: false
+
+style:
+  ReturnCount:
+    max: 3
+  MaxLineLength:
+    maxLineLength: 110
